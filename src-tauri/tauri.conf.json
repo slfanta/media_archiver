@@ -1,6 +1,6 @@
 {
-  "productName": "Batch 7z Archiver",
-  "version": "0.1.0",
+  "productName": "Batch Media Archiver",
+  "version": "0.1.1",
   "identifier": "com.archivetool.app",
   "build": {
     "frontendDist": "gen",
@@ -11,11 +11,12 @@
   "app": {
     "windows": [
       {
-        "title": "Batch 7z Archiver",
-        "width": 850,
+        "title": "Batch Media Archiver",
+        "theme": "Dark",
+        "width": 760,
         "height": 700,
         "resizable": true,
-        "minWidth": 700,
+        "minWidth": 660,
         "minHeight": 550
       }
     ],
@@ -25,7 +26,8 @@
   },
   "bundle": {
     "active": true,
-    "targets": "msi",
+    "useLocalToolsDir": true,
+    "targets": "nsis",
     "icon": ["icons/icon.ico"]
   }
 }

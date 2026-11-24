@@ -1,5 +1,6 @@
 /node_modules/
 /.cargo-home/
+/.toolchains/
 /dist/
 /src-tauri/gen/
 /src-tauri/target/
