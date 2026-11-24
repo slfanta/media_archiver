@@ -115,8 +115,9 @@ fn batch_archive_inner(
             .to_string()
     })?;
 
-    let video_directories = video_directories(&root, &video_paths)?;
-    let password_file_count = create_password_files(&video_directories, &password, &start_date)?;
+    validate_video_paths(&root, &video_paths)?;
+    let batch_directories = batch_directories(&root)?;
+    let password_file_count = create_password_files(&batch_directories, &password, &start_date)?;
     let total = video_paths.len();
     emit_progress(
         &window,
@@ -125,7 +126,7 @@ fn batch_archive_inner(
         String::new(),
         "password-files-created",
         format!(
-            "Created {password_file_count} plaintext password file(s) in folders containing videos."
+            "Created {password_file_count} plaintext password file(s) in the selected folder and its descendants."
         ),
     );
     let mut archived_count = 0;
@@ -163,8 +164,7 @@ fn batch_archive_inner(
     Ok(archived_count)
 }
 
-fn video_directories(root: &Path, video_paths: &[String]) -> Result<BTreeSet<PathBuf>, String> {
-    let mut directories = BTreeSet::new();
+fn validate_video_paths(root: &Path, video_paths: &[String]) -> Result<(), String> {
     for supplied_path in video_paths {
         let source = Path::new(supplied_path)
             .canonicalize()
@@ -175,10 +175,17 @@ fn video_directories(root: &Path, video_paths: &[String]) -> Result<BTreeSet<Pat
         if !source.is_file() || !is_video(&source) {
             return Err("a source is not a supported video file".to_string());
         }
-        let parent = source
-            .parent()
-            .ok_or_else(|| "a video has no parent folder".to_string())?;
-        directories.insert(parent.to_path_buf());
+    }
+    Ok(())
+}
+
+fn batch_directories(root: &Path) -> Result<BTreeSet<PathBuf>, String> {
+    let mut directories = BTreeSet::new();
+    for entry in WalkDir::new(root).follow_links(false) {
+        let entry = entry.map_err(|error| format!("folder scan failed: {error}"))?;
+        if entry.file_type().is_dir() {
+            directories.insert(entry.path().to_path_buf());
+        }
     }
     Ok(directories)
 }
@@ -451,7 +458,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{create_password_file, sanitize_password_component};
+    use super::{
+        batch_directories, create_password_file, create_password_files, sanitize_password_component,
+    };
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -491,6 +500,41 @@ mod tests {
         })();
 
         fs::remove_dir_all(directory).unwrap();
+        result
+    }
+
+    #[test]
+    fn password_files_are_created_in_the_root_and_every_descendant() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "archive-tool-directory-test-{}-{nonce}",
+            std::process::id()
+        ));
+        let nested = root.join("nested");
+        let empty = nested.join("empty");
+        fs::create_dir_all(&empty).unwrap();
+
+        let result = (|| {
+            let directories = batch_directories(&root).unwrap();
+            assert_eq!(directories.len(), 3);
+            assert!(directories.contains(&root));
+            assert!(directories.contains(&nested));
+            assert!(directories.contains(&empty));
+
+            assert_eq!(
+                create_password_files(&directories, "secret", "2026-11-24").unwrap(),
+                3
+            );
+            for directory in directories {
+                let path = directory.join("pw_secret_2026-11-24.txt");
+                assert_eq!(fs::read(path).unwrap(), b"secret");
+            }
+        })();
+
+        fs::remove_dir_all(root).unwrap();
         result
     }
 }

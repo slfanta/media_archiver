@@ -56,7 +56,7 @@ app.innerHTML = `
       <label class="password-label" for="password">Archive password <span class="required">Required</span></label>
       <input id="password" class="password-input" type="password" autocomplete="new-password" placeholder="Enter a password for every archive" />
       <p class="helper">Each video gets its own encrypted <code>.7z</code> archive beside the original. File names are encrypted too.</p>
-      <p class="helper">At batch start, a plaintext password file is created in each folder containing videos. Invalid filename characters are replaced with underscores; the file contents remain exact.</p>
+      <p class="helper">At batch start, a plaintext password file is created in the selected folder and every descendant folder. Invalid filename characters are replaced with underscores; the file contents remain exact.</p>
       <label class="delete-option">
         <input id="delete-originals" type="checkbox" />
         <span class="checkbox-copy">
