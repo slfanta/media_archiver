@@ -17,3 +17,14 @@
 /rust_search.txt
 /tauri_dev.txt
 *.log
+
+# TypeScript / Vite caches
+*.tsbuildinfo
+.vite/
+
+# Editor & OS junk
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
