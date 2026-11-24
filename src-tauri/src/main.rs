@@ -7,6 +7,8 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use tauri::Emitter;
@@ -32,6 +34,9 @@ const VIDEO_EXTENSIONS: &[&str] = &[
     "mpv", "m2ts", "mts", "ts", "3gp", "3g2", "3gpp", "ogv", "vob", "asf", "divx", "rm", "rmvb",
     "f4v", "amv", "mxf", "qt", "wtv", "dvr-ms",
 ];
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[tauri::command]
 async fn scan_videos(folder: String) -> Result<Vec<VideoFile>, String> {
@@ -320,7 +325,7 @@ fn archive_one(
     let archive_name = Path::new(".").join(append_7z_suffix(file_name));
     let source_name = Path::new(".").join(file_name);
 
-    let archive_output = Command::new(seven_zip)
+    let archive_output = seven_zip_command(seven_zip)
         .current_dir(parent)
         .arg("a")
         .arg("-t7z")
@@ -333,7 +338,7 @@ fn archive_one(
         .map_err(|error| (file.clone(), format!("failed to launch 7-Zip: {error}")))?;
     ensure_success(&archive_output, &file, "7-Zip archive creation")?;
 
-    let test_output = Command::new(seven_zip)
+    let test_output = seven_zip_command(seven_zip)
         .current_dir(parent)
         .arg("t")
         .arg(format!("-p{password}"))
@@ -358,6 +363,13 @@ fn archive_one(
     } else {
         Ok((file, "Archive created and verified.".to_string(), "done"))
     }
+}
+
+fn seven_zip_command(executable: &Path) -> Command {
+    let mut command = Command::new(executable);
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
+    command
 }
 
 fn ensure_success(output: &Output, file: &str, action: &str) -> Result<(), (String, String)> {
